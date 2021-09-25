@@ -1,4 +1,4 @@
-package fr.auretyube.client;
+package fr.auretyube.main;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -7,7 +7,9 @@ import java.net.ConnectException;
 import java.net.Socket;
 import java.net.SocketException;
 
-public class Client implements Runnable {
+import fr.auretyube.packets.RemoveConnectionPacket;
+
+public class Client implements Runnable{
 	
 	private String host;
 	private int port;
@@ -15,22 +17,25 @@ public class Client implements Runnable {
 	private Socket socket;
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
+	
 	private boolean running = false;
+	private EventListener listener;
 	
 	public Client(String host, int port) {
 		this.host = host;
 		this.port = port;
 	}
 	
-	public void connect(String threadGroup) {
+	public void connect() {
 		try {
-			socket = new Socket(host, port);
+			socket = new Socket(host,port);
 			out = new ObjectOutputStream(socket.getOutputStream());
 			in = new ObjectInputStream(socket.getInputStream());
-			new Thread(new ThreadGroup(threadGroup), this, "client").start();
-		} catch (ConnectException e ) {
-			System.err.println("Unable to connect to the server");
-		} catch (IOException e) {
+			listener = new EventListener();
+			new Thread(this).start();
+		}catch(ConnectException e) {
+			System.out.println("Unable to connect to the server");
+		}catch(IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -38,10 +43,12 @@ public class Client implements Runnable {
 	public void close() {
 		try {
 			running = false;
+			RemoveConnectionPacket packet = new RemoveConnectionPacket();
+			sendObject(packet);
 			in.close();
 			out.close();
 			socket.close();
-		} catch (Exception e) {
+		}catch(IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -49,8 +56,8 @@ public class Client implements Runnable {
 	public void sendObject(Object packet) {
 		try {
 			out.writeObject(packet);
-		} catch (Exception e) {
-			
+		}catch(IOException e) {
+			e.printStackTrace();
 		}
 	}
 	
@@ -62,15 +69,16 @@ public class Client implements Runnable {
 			while(running) {
 				try {
 					Object data = in.readObject();
-				} catch (ClassNotFoundException e) {
+					listener.received(data);
+				}catch(ClassNotFoundException e) {
 					e.printStackTrace();
-				} catch (SocketException e) {
+				}catch(SocketException e) {
 					close();
 				}
 			}
-		} catch (IOException e) {
+		}catch(IOException e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 }
