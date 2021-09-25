@@ -25,8 +25,8 @@ public class Server implements Runnable {
 		this.buffer = ByteBuffer.allocate(bufferSize);
 	}
 	
-	public void start(String name) {
-		new Thread(new ThreadGroup(name), this, "server").start();
+	public void start(String threadGroup) {
+		new Thread(new ThreadGroup(threadGroup), this, "server").start();
 	}
 	
 	@Override
